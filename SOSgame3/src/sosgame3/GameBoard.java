@@ -5,8 +5,18 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Random;
+import java.util.List;
+import java.util.ArrayList;
+import javax.swing.Timer;
+import java.util.Iterator;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 
-//ertegtdyjdytukfuykr
+
+
+
+//ertgjfhrtdjrtdjhtgmcvjhgfvkuyfkuyh
 
 
 public class GameBoard extends JPanel 
@@ -16,19 +26,95 @@ public class GameBoard extends JPanel
 	private char[][] boardValues;
 	private static Color currentColor = Color.RED;
 	private static String gameMode = "general"; // default mode
-	//fgbdhghndgyfhndyt
+	//fgbdhgjhtcjytdjytdfjutyfkuyfkuyft
 	private int redScore = 0;
 	private int blueScore = 0;
 	private static boolean isSTurn = true;  // Start with "S" turn
 	private static String currentLetter = "S"; // Default letter
 	private String opponentType;
 	public Color playerColor;
+	
+	private boolean isRecording = false;
+	private List<String> recordedMoves = new ArrayList<>();
+
+
+	public void toggleRecording() 
+	{
+	    isRecording = !isRecording;
+	    if (isRecording) recordedMoves.clear();
+	}
+
+	private void recordMove(int row, int col, String letter) {
+	    if (isRecording) {
+	        String color = (currentColor == Color.RED) ? "RED" : "BLUE";
+	        recordedMoves.add(row + "," + col + "," + letter + "," + color);
+	    }
+	}
+
+
+	public void replayRecordedGame(JFrame frame) {
+	    resetGame();
+	    Iterator<String> moveIterator = recordedMoves.iterator();
+
+	    Timer timer = new Timer(500, new ActionListener() {
+	        public void actionPerformed(ActionEvent e) {
+	            if (!moveIterator.hasNext()) {
+	                ((Timer) e.getSource()).stop();
+	                return;
+	            }
+
+	            String move = moveIterator.next();
+	            SwingUtilities.invokeLater(() -> {
+	                String[] parts = move.split(",");
+	                int row = Integer.parseInt(parts[0]);
+	                int col = Integer.parseInt(parts[1]);
+	                String letter = parts[2];
+	                String color = parts[3];
+	                GameButton btn = buttons[row][col];
+
+	                btn.setText(letter);
+
+	                if ("RED".equals(color)) {
+	                    btn.setForeground(Color.RED);
+	                } else if ("BLUE".equals(color)) {
+	                    btn.setForeground(Color.BLUE);
+	                }
+
+	                boardValues[row][col] = letter.charAt(0);
+	                checkForSOS(row, col);
+	                btn.repaint(); // Refresh the button's appearance
+
+	                // Update the UI after each move
+	                frame.revalidate();
+	                frame.repaint();
+	            });
+	        }
+	    });
+	    timer.setInitialDelay(0);
+	    timer.start();
+	}
+
+
+
+
+
+	public void saveRecordedGameToFile(String fileName) {
+	    try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
+	        for (String move : recordedMoves) {
+	            writer.write(move);
+	            writer.newLine();
+	        }
+	        JOptionPane.showMessageDialog(null, "Game recorded to " + fileName);
+	    } catch (IOException e) {
+	        JOptionPane.showMessageDialog(null, "Error saving game: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+	    }
+	}
 
 
 
 	public GameBoard(int boardSize) {
 		
-					System.out.println("7--- just entered GameBoard class-> GameBoard constructor  ");
+		System.out.println("7--- just entered GameBoard class-> GameBoard constructor  ");
 	    resetGame(); // Reset the game variables
 	    this.BOARD_SIZE = boardSize;
 	    boardValues = new char[BOARD_SIZE][BOARD_SIZE];
@@ -82,15 +168,23 @@ public class GameBoard extends JPanel
 	
 	
 	public void resetGame() {
-		System.out.println("GameBoard -> resetGame");
 	    currentColor = Color.RED;
 	    currentLetter = "S";
 	    isSTurn = true;
 	    redScore = 0;
 	    blueScore = 0;
-	    System.out.println("8---entered and exiting resetGame method ");
+
+	    // Clear all buttons
+	    for (int i = 0; i < BOARD_SIZE; i++) {
+	        for (int j = 0; j < BOARD_SIZE; j++) {
+	            buttons[i][j].setText("");
+	            buttons[i][j].setForeground(Color.BLACK); // Resetting color to default
+	        }
+	    }
+
+	    System.out.println("Game reset");
 	}
-	
+
 	public void setRedScore(int score)
 	{
 		System.out.println("GameBoard -> setRedScore");
@@ -137,7 +231,6 @@ public class GameBoard extends JPanel
 
 	
 	public void displayEndOfGamePopup(JFrame frame) {
-		System.out.println("GameBoard -> displayEndOfGamePopup(JFrame frame)");
 	    String winner;
 	    if ("simple".equals(gameMode)) {
 	        winner = redScore > 0 ? "Red" : "Blue";
@@ -149,10 +242,13 @@ public class GameBoard extends JPanel
 	    }
 	    String message = "Scores:\nRed: " + redScore + "\nBlue: " + blueScore + "\nWinner: " + winner;
 
-	    Object[] options = {"Start New Game", "Close"};
+	    // Adjusted options to include 'Replay Recorded Game' based on the recording state
+	    Object[] options = isRecording ? 
+	            new Object[]{"Start New Game", "Replay Recorded Game", "Save Recording", "Close"} : 
+	            new Object[]{"Start New Game", "Close"};
 
 	    int choice = JOptionPane.showOptionDialog(frame, message, "Game Over",
-	            JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
+	            JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
 
 	    if (choice == JOptionPane.YES_OPTION) { // Start New Game
 	        int boardSize = SOSGame3.promptForBoardSize();
@@ -164,10 +260,18 @@ public class GameBoard extends JPanel
 	        frame.repaint();
 	        frame.pack();
 	        frame.setLocationRelativeTo(null);
-	    } else if (choice == JOptionPane.NO_OPTION) { // Close the game
+	    } else if (choice == JOptionPane.NO_OPTION && isRecording) {
+	        // Replay the recorded game
+	        replayRecordedGame(frame);
+	    }else if (choice == 2 && isRecording) {
+	            // Save the recorded game
+	            saveRecordedGameToFile("recordedGame.txt");
+	    } else {
+	        // Close the game
 	        frame.dispose();
 	    }
 	}
+
 
 
 
@@ -201,65 +305,50 @@ public class GameBoard extends JPanel
 	}
 	
 	
-	private void makeComputerMove() 
-	{
-		Timer timer = new Timer(500, new ActionListener() 
-		{
-		    public void actionPerformed(ActionEvent e) 
-		    {
-		
-		
-		
-		System.out.println("GameBoard -> makeComputerMove()");
-	    // Save the current letter to restore it later
-	    String savedLetter = currentLetter;
+	private void makeComputerMove() {
+	    Timer timer = new Timer(500, new ActionListener() {
+	        public void actionPerformed(ActionEvent e) {
+	            System.out.println("GameBoard -> makeComputerMove()");
+	            // Save the current letter to restore it later
+	            String savedLetter = currentLetter;
 
-	    // Randomly choose between 'S' and 'O' for the computer's move
-	    Random random = new Random();
-	    currentLetter = random.nextBoolean() ? "S" : "O";
+	            // Randomly choose between 'S' and 'O' for the computer's move
+	            Random random = new Random();
+	            currentLetter = random.nextBoolean() ? "S" : "O";
 
-	    // First, try to make an SOS sequence if possible
-	    if (!attemptToMakeSOS()) {
-	        // If not possible, place a letter in a position that doesn't allow the opponent to create SOS
-//            placeLetterSafely();
-	    	 makeRandomMove();
-	    	
-	    }
-
-	    // Update scores and check if the game is over
-	    if (isBoardFull()) 
-	    {
-	        displayEndOfGamePopup((JFrame) SwingUtilities.getWindowAncestor(buttons[0][0]));
-	    } 
-	    else 
-	    {
-	        // Toggle the player for the next turn
-	        togglePlayer();
-
-	        // In Computer-vs-Computer mode, continue playing
-	        if ("Computer-vs-Computer".equals(opponentType)) 
-	        {
-	            SwingUtilities.invokeLater(() -> {
-	                if (!isBoardFull()) {
-	                    makeComputerMove();
+	            // First, try to make an SOS sequence if possible
+	            if (!attemptToMakeSOS()) {
+	                // If not possible, place a letter in a position that doesn't allow the opponent to create SOS
+	                int[] move = makeRandomMove();
+	                if (isRecording) {
+	                    // Record the move
+	                    recordMove(move[0], move[1], currentLetter);
 	                }
-	            });
-	        }
-	    }
+	            }
 
-	    // Restore the original letter
-	    currentLetter = savedLetter;
-	    
-	    
-		    }
-		});
-		timer.setRepeats(false); // Ensure it only runs once
-		timer.start();
-	    
-	    
-	    
-	    
-	    
+	            // Update scores and check if the game is over
+	            if (isBoardFull()) {
+	                displayEndOfGamePopup((JFrame) SwingUtilities.getWindowAncestor(buttons[0][0]));
+	            } else {
+	                // Toggle the player for the next turn
+	                togglePlayer();
+
+	                // In Computer-vs-Computer mode, continue playing
+	                if ("Computer-vs-Computer".equals(opponentType)) {
+	                    SwingUtilities.invokeLater(() -> {
+	                        if (!isBoardFull()) {
+	                            makeComputerMove();
+	                        }
+	                    });
+	                }
+	            }
+
+	            // Restore the original letter
+	            currentLetter = savedLetter;
+	        }
+	    });
+	    timer.setRepeats(false); // Ensure it only runs once
+	    timer.start();
 	}
 
 
@@ -308,18 +397,19 @@ public class GameBoard extends JPanel
 	    makeRandomMove();
 	}
 	
-	private void makeRandomMove() {
+	private int[] makeRandomMove() {
 	    Random rand = new Random();
-	    while (true) 
-	    {
-	        int row = rand.nextInt(BOARD_SIZE);
-	        int col = rand.nextInt(BOARD_SIZE);
+	    int row, col;
+	    while (true) {
+	        row = rand.nextInt(BOARD_SIZE);
+	        col = rand.nextInt(BOARD_SIZE);
 	        if ("".equals(buttons[row][col].getText())) {
 	            buttons[row][col].setText(currentLetter);
 	            buttons[row][col].setForeground(currentColor);
 	            break;
 	        }
 	    }
+	    return new int[]{row, col}; // Return the position of the move
 	}
 	
 	private boolean canMakeSOS(int row, int col) {
@@ -368,11 +458,11 @@ public class GameBoard extends JPanel
 	            GameButton btn = new GameButton(i, j);
 	            btn.addActionListener(new ActionListener() 
 	            {
-	                
 	            	@Override
 	            	public void actionPerformed(ActionEvent e) 
 	            	{System.out.println("GameBoard -> initializeButtons() -> action performed");
 	            	    GameButton source = (GameButton) e.getSource();
+	            	    recordMove(source.getRow(), source.getCol(), GameBoard.getCurrentLetter());
 	            	    if ("".equals(source.getText())) 
 	            	    {System.out.println("GameBoard -> initializeButtons() -> if (\"\".equals(source.getText())) ");
 	            	        source.setText(GameBoard.getCurrentLetter());
