@@ -1,5 +1,5 @@
-//mew
-//hertyhrtyhertyhrty
+//mewhdbfivjhv,jhvb,jhvb,jhb,jhk
+//hertyhrtyhertgcfjhftyjuyfkuyfkuy
 package sosgame3;
 
 import javax.swing.*;
@@ -12,10 +12,12 @@ public class SOSGame3
      public static JRadioButton blueButton = new JRadioButton("Blue");
      static JRadioButton sButton = new JRadioButton("S"); 
      static JRadioButton oButton = new JRadioButton("O"); 
+     public static JToggleButton recordButton = new JToggleButton("Record");
+     
      
 	 public static void main(String[] args) 
 	 {
-		//dfverthrthrtyhr
+	
 		
 	    SwingUtilities.invokeLater(new Runnable() 
 	    {
@@ -98,6 +100,7 @@ public class SOSGame3
 
         // For color choice
         JPanel colorPanel = new JPanel();
+        
        
         ButtonGroup colorGroup = new ButtonGroup();
         colorGroup.add(redButton);
@@ -108,6 +111,12 @@ public class SOSGame3
         
         colorPanel.add(redButton);
         colorPanel.add(blueButton);
+        
+        recordButton.addActionListener(e -> gameBoard.toggleRecording());
+        // Choose where to add the record button. Here's an example:
+        JPanel recordPanel = new JPanel();
+        recordPanel.add(recordButton);
+        panel.add(recordPanel);
         
         // For letter choice
         JPanel letterPanel = new JPanel();
@@ -126,6 +135,9 @@ public class SOSGame3
         panel.add(letterPanel);
         return panel;
     }
+	
+	
+	
 	//
 	public static void initializeMenu(JFrame frame) 
 	{
